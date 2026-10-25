@@ -1,0 +1,81 @@
+
+import time
+import requests
+
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+
+app = FastAPI()
+
+
+class PromptRequest(BaseModel):
+    prompt: str
+
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy"}
+
+
+@app.post("/generate")
+def generate(request: PromptRequest):
+    try:
+        start = time.perf_counter()
+
+        response = requests.post(
+            "http://127.0.0.1:11434/api/generate",
+            json={
+                "model": "qwen3:0.6b",
+                "prompt": request.prompt,
+                "stream": False,
+		"think": False
+            },
+            timeout=(3, 120)
+        )
+
+        response.raise_for_status()
+
+        latency_ms = (
+            time.perf_counter() - start
+        ) * 1000
+
+        data = response.json()
+
+        output_tokens = data.get("eval_count", 0)
+        eval_duration_ns = data.get("eval_duration", 0)
+
+        tokens_per_second = (
+            round(output_tokens * 1e9 / eval_duration_ns, 2)
+            if eval_duration_ns > 0
+            else None
+        )
+
+        return {
+            "response": data["response"],
+            "latency_ms": round(latency_ms, 2),
+            "output_tokens": output_tokens,
+            "tokens_per_second": tokens_per_second,
+	     "load_duration_ms": round(
+                data.get("load_duration", 0) / 1e6, 2
+            ),
+            "prompt_eval_duration_ms": round(
+                data.get("prompt_eval_duration", 0) / 1e6, 2
+            ),
+            "ollama_total_ms": round(
+                data.get("total_duration", 0) / 1e6, 2
+            )
+
+        }
+
+    except requests.exceptions.Timeout:
+        raise HTTPException(
+            status_code=504,
+            detail="Inference server timed out"
+        )
+
+    except requests.exceptions.ConnectionError:
+        raise HTTPException(
+            status_code=503,
+            detail="Inference server unavailable"
+        )
+
