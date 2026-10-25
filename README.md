@@ -300,3 +300,77 @@ The current test suite verifies:
 
 
 
+
+
+\## v0.3 — Concurrency Control
+
+
+
+The gateway implements concurrency protection
+
+using Python's threading.BoundedSemaphore.
+
+
+
+\### Features
+
+
+
+\- Maximum of 2 concurrent inference requests
+
+\- Shared limit across regular and streaming APIs
+
+\- Immediate HTTP 429 response when capacity is full
+
+\- Automatic slot release after request completion
+
+\- Unit and HTTP-level concurrency tests
+
+
+
+\### Load Testing
+
+
+
+Run:
+
+
+
+&#x20;   python concurrent\_client.py
+
+
+
+The script sends 3 concurrent inference requests.
+
+
+
+Expected behavior:
+
+\- 2 requests are accepted
+
+\- 1 request receives HTTP 429
+
+
+
+\### Current Limitations
+
+
+
+\- Concurrency control is process-local
+
+\- No persistent request queue
+
+\- No distributed coordination across workers
+
+\- GPU execution concurrency depends on Ollama
+
+
+
+Distributed concurrency control using Redis
+
+is planned for a future release.
+
+
+
+
+

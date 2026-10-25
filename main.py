@@ -2,9 +2,10 @@ import json
 from fastapi.responses import StreamingResponse
 import time
 import requests
-
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from fastapi import Depends
+from limiter import reserve_inference_slot
 
 app = FastAPI()
 
@@ -18,7 +19,10 @@ def health_check():
     return {"status": "healthy"}
 
 
-@app.post("/generate")
+@app.post(
+    "/generate",
+    dependencies=[Depends(reserve_inference_slot)]
+)
 def generate(request: PromptRequest):
     try:
         start = time.perf_counter()
@@ -82,7 +86,10 @@ def generate(request: PromptRequest):
 
 
 
-@app.post("/generate/stream")
+@app.post(
+    "/generate/stream",
+    dependencies=[Depends(reserve_inference_slot)]
+)
 def generate_stream(request: PromptRequest):
 
     try:
