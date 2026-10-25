@@ -1,5 +1,3 @@
-
-
 \# AI Inference Gateway
 
 
@@ -205,6 +203,100 @@ The response includes generated text and inference performance metrics.
 
 
 Prototype under active development.
+
+
+
+
+
+\## Streaming Inference
+
+
+
+The gateway supports real-time text streaming
+
+through the `/generate/stream` endpoint.
+
+
+
+\### Run the Streaming Client
+
+
+
+Windows:
+
+
+
+&#x20;   .\\.venv\\Scripts\\python.exe stream\_client.py
+
+
+
+macOS:
+
+
+
+&#x20;   .venv/bin/python stream\_client.py
+
+
+
+The client displays generated text incrementally
+
+and measures:
+
+
+
+\- Approximate Time to First Token (TTFT)
+
+\- Total response latency
+
+
+
+\### Run Automated Tests
+
+
+
+&#x20;   python -m pytest -q
+
+
+
+The current test suite verifies:
+
+
+
+\- Successful streaming response
+
+\- HTTP 503 when the inference server is unavailable
+
+
+
+\## Version History
+
+
+
+\### v0.2 - Streaming Inference
+
+
+
+\- Added streaming API endpoint
+
+\- Added Python streaming client
+
+\- Added client-observed TTFT measurement
+
+\- Added automated API tests
+
+
+
+\### v0.1 - Initial Gateway
+
+
+
+\- Local inference with Ollama
+
+\- Basic API and health checks
+
+\- Timeout and connection error handling
+
+\- Inference performance metrics
 
 
 

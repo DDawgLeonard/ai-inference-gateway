@@ -1,4 +1,5 @@
-
+import json
+from fastapi.responses import StreamingResponse
 import time
 import requests
 
@@ -79,3 +80,63 @@ def generate(request: PromptRequest):
             detail="Inference server unavailable"
         )
 
+
+
+@app.post("/generate/stream")
+def generate_stream(request: PromptRequest):
+
+    try:
+        upstream = requests.post(
+            "http://127.0.0.1:11434/api/generate",
+            json={
+                "model": "qwen3:0.6b",
+                "prompt": request.prompt,
+                "stream": True,
+                "think": False
+            },
+            stream=True,
+            timeout=(3, 120)
+        )
+
+        upstream.raise_for_status()
+
+    except requests.exceptions.Timeout:
+        raise HTTPException(
+            status_code=504,
+            detail="Inference server timed out"
+        )
+
+    except requests.exceptions.ConnectionError:
+        raise HTTPException(
+            status_code=503,
+            detail="Inference server unavailable"
+        )
+
+    except requests.exceptions.HTTPError:
+        raise HTTPException(
+            status_code=502,
+            detail="Inference server returned an error"
+        )
+
+    def text_chunks():
+        try:
+            for line in upstream.iter_lines(chunk_size=1):
+                if not line:
+                    continue
+
+                data = json.loads(line)
+
+                if data.get("done"):
+                    break
+
+                chunk = data.get("response", "")
+
+                if chunk:
+                    yield chunk
+        finally:
+            upstream.close()
+
+    return StreamingResponse(
+        text_chunks(),
+        media_type="text/plain; charset=utf-8"
+    )
