@@ -188,6 +188,7 @@ The response includes generated text and inference performance metrics.
 - [x] Queue timeout and HTTP 429/503 handling
 - [x] Automated unit and API testing
 
+HEAD
 ### Planned
 - [ ] Redis-based distributed rate limiting
 - [ ] Prometheus metrics collection
@@ -195,6 +196,25 @@ The response includes generated text and inference performance metrics.
 - [ ] Docker and Docker Compose deployment
 - [ ] Automated load testing and benchmarking
 - [ ] Kubernetes deployment
+
+\- \[x] Basic inference gateway
+
+\- \[x] Error and timeout handling
+
+\- \[x] Basic performance metrics
+
+\- \[x] Streaming inference
+
+\- \[x] Concurrency control
+
+\- \[x] Redis rate limiting
+
+\- \[x] Prometheus and Grafana monitoring
+
+\- \[ ] Docker deployment
+
+\- \[ ] Automated load testing
+ f34ba5a (feat: add Prometheus metrics and Grafana monitoring)
 
 
 
@@ -426,6 +446,87 @@ Current result: 10 tests passed.
 - Prometheus metrics
 - Grafana dashboards
 - Distributed coordination with Redis
+
+
+
+## v0.5 — Observability & Monitoring
+
+The AI Inference Gateway includes an observability
+stack built with Prometheus and Grafana.
+
+### Monitoring Features
+
+- HTTP request counters by endpoint and status
+- Request rate (RPS)
+- P95 inference HTTP latency
+- Active inference request gauge
+- Waiting queue depth gauge
+- HTTP error rate monitoring
+
+### Architecture
+
+FastAPI Gateway
+    |
+    | GET /metrics
+    v
+Prometheus
+    |
+    | PromQL
+    v
+Grafana Dashboard
+
+### Metrics Endpoint
+
+The gateway exposes Prometheus metrics at:
+
+http://localhost:8000/metrics
+
+### Monitoring Dashboard
+
+The Grafana dashboard includes:
+
+1. Inference Request Rate (RPS)
+2. Inference P95 Latency
+3. Inference Queue Depth
+4. Inference HTTP Error Rate
+
+Dashboard JSON:
+
+grafana/dashboards/ai-inference-gateway-dashboard.json
+
+### Local Development
+
+This version runs the FastAPI gateway on the
+host machine while Prometheus and Grafana
+run in Docker containers.
+
+Start existing monitoring containers:
+
+    docker start ai-prometheus ai-grafana
+
+Prometheus UI:
+http://localhost:9090
+
+Grafana UI:
+http://localhost:3000
+
+The gateway and Ollama must also be running.
+
+### Automated Tests
+
+Run:
+
+    python -m pytest -q
+
+Latest local validation: 11 tests passed.
+
+### Limitations
+
+- Metrics currently use a single-process design
+- P95 measures gateway HTTP latency, not GPU-only time
+- Streaming completion latency is not yet measured
+- Dashboard JSON import needs independent validation
+- Docker Compose deployment is planned for v0.6
 
 
 

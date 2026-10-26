@@ -1,3 +1,12 @@
+from fastapi import Response
+from fastapi import Request
+from prometheus_client import Counter
+
+from prometheus_client import (
+    Gauge,
+    generate_latest,
+    CONTENT_TYPE_LATEST
+)
 import json
 from fastapi.responses import StreamingResponse
 import time
@@ -11,6 +20,11 @@ from queue_manager import (
     QueueTimeoutError
 )
 
+from prometheus_client import Histogram
+
+
+
+
 app = FastAPI()
 
 
@@ -20,6 +34,39 @@ inference_queue = InferenceQueue(
     max_waiting=3,
     wait_timeout=10.0
 )
+
+
+ACTIVE_REQUESTS = Gauge(
+    "ai_gateway_active_requests",
+    "Number of active inference slots"
+)
+
+
+WAITING_REQUESTS = Gauge(
+    "ai_gateway_waiting_requests",
+    "Number of requests waiting in queue"
+)
+
+
+REQUESTS_TOTAL = Counter(
+    "ai_gateway_requests_total",
+    "Total inference HTTP responses",
+    ["endpoint", "status"]
+)
+
+
+
+REQUEST_LATENCY = Histogram(
+    "ai_gateway_inference_request_duration_seconds",
+    "Inference HTTP request duration in seconds",
+    ["endpoint"],
+    buckets=(
+        0.05, 0.1, 0.25, 0.5,
+        1.0, 2.0, 5.0, 10.0,
+        20.0, 60.0
+    )
+)
+
 
 
 def reserve_queue_slot():
@@ -181,3 +228,64 @@ def generate_stream(request: PromptRequest):
         text_chunks(),
         media_type="text/plain; charset=utf-8"
     )
+
+
+
+@app.get("/metrics", include_in_schema=False)
+def metrics():
+
+    # Read a consistent queue snapshot
+    with inference_queue.condition:
+        active = inference_queue.active
+        waiting = len(inference_queue.waiting)
+
+    ACTIVE_REQUESTS.set(active)
+    WAITING_REQUESTS.set(waiting)
+
+    return Response(
+        content=generate_latest(),
+        media_type=CONTENT_TYPE_LATEST
+    )
+
+
+
+
+@app.middleware("http")
+async def count_inference_requests(
+    request: Request,
+    call_next
+):
+    path = request.url.path
+
+    if path not in (
+        "/generate",
+        "/generate/stream"
+    ):
+        return await call_next(request)
+
+    start = time.perf_counter()
+
+    try:
+        response = await call_next(request)
+
+    except Exception:
+        REQUESTS_TOTAL.labels(
+            endpoint=path,
+            status="500"
+        ).inc()
+        raise
+
+    REQUESTS_TOTAL.labels(
+        endpoint=path,
+        status=str(response.status_code)
+    ).inc()
+
+    # Measure complete non-streaming API requests
+    if path == "/generate":
+        elapsed = time.perf_counter() - start
+
+        REQUEST_LATENCY.labels(
+            endpoint=path
+        ).observe(elapsed)
+
+    return response
