@@ -174,27 +174,27 @@ The response includes generated text and inference performance metrics.
 
 
 
-\## Roadmap
 
+## Roadmap
 
+### Completed
+- [x] Basic inference gateway
+- [x] Error and timeout handling
+- [x] Basic inference performance metrics
+- [x] Streaming inference
+- [x] Client-side TTFT measurement
+- [x] Concurrency control
+- [x] FIFO request queue
+- [x] Queue timeout and HTTP 429/503 handling
+- [x] Automated unit and API testing
 
-\- \[x] Basic inference gateway
-
-\- \[x] Error and timeout handling
-
-\- \[x] Basic performance metrics
-
-\- \[ ] Streaming inference
-
-\- \[ ] Concurrency control
-
-\- \[ ] Redis rate limiting
-
-\- \[ ] Prometheus and Grafana monitoring
-
-\- \[ ] Docker deployment
-
-\- \[ ] Automated load testing
+### Planned
+- [ ] Redis-based distributed rate limiting
+- [ ] Prometheus metrics collection
+- [ ] Grafana monitoring dashboard
+- [ ] Docker and Docker Compose deployment
+- [ ] Automated load testing and benchmarking
+- [ ] Kubernetes deployment
 
 
 
