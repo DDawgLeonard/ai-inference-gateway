@@ -5,9 +5,43 @@ import requests
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from fastapi import Depends
-from limiter import reserve_inference_slot
+from queue_manager import (
+    InferenceQueue,
+    QueueFullError,
+    QueueTimeoutError
+)
 
 app = FastAPI()
+
+
+# Shared queue for this Gateway process
+inference_queue = InferenceQueue(
+    max_active=2,
+    max_waiting=3,
+    wait_timeout=10.0
+)
+
+
+def reserve_queue_slot():
+    try:
+        inference_queue.acquire()
+
+    except QueueFullError:
+        raise HTTPException(
+            status_code=429,
+            detail="Inference waiting queue is full"
+        )
+
+    except QueueTimeoutError:
+        raise HTTPException(
+            status_code=503,
+            detail="Inference queue wait timed out"
+        )
+
+    try:
+        yield
+    finally:
+        inference_queue.release()
 
 
 class PromptRequest(BaseModel):
@@ -21,7 +55,7 @@ def health_check():
 
 @app.post(
     "/generate",
-    dependencies=[Depends(reserve_inference_slot)]
+    dependencies=[Depends(reserve_queue_slot)]
 )
 def generate(request: PromptRequest):
     try:
@@ -88,7 +122,7 @@ def generate(request: PromptRequest):
 
 @app.post(
     "/generate/stream",
-    dependencies=[Depends(reserve_inference_slot)]
+    dependencies=[Depends(reserve_queue_slot)]
 )
 def generate_stream(request: PromptRequest):
 

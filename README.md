@@ -372,5 +372,64 @@ is planned for a future release.
 
 
 
+## v0.4 — FIFO Request Queue
+
+Implemented a bounded, in-memory inference
+request queue for GPU workload management.
+
+### Features
+
+- FIFO request scheduling
+- Maximum 2 active inference requests
+- Maximum 3 waiting requests
+- Configurable queue wait timeout (10 seconds)
+- HTTP 429 when the waiting queue is full
+- HTTP 503 when queue waiting times out
+- Shared queue across regular and streaming endpoints
+
+### Concurrency Test
+
+Run:
+
+    python concurrent_client.py
+
+In one local test with 6 concurrent requests:
+
+| Status | Requests |
+|--------|----------|
+| HTTP 200 | 3 |
+| HTTP 429 | 1 |
+| HTTP 503 | 2 |
+
+Results depend on model generation time and load.
+
+### Automated Tests
+
+Run:
+
+    python -m pytest -q
+
+Current result: 10 tests passed.
+
+### Limitations
+
+- Queue state exists only in process memory
+- No distributed coordination across workers
+- No persistent queue or job recovery
+- Client disconnection and cancellation handling
+  are not fully implemented
+- High-load performance has not been validated
+
+### Next Steps
+
+- Docker containerization
+- Prometheus metrics
+- Grafana dashboards
+- Distributed coordination with Redis
+
+
+
+
+
 
 

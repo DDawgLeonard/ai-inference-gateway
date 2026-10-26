@@ -1,27 +1,36 @@
 
 import pytest
+import main
 
 from fastapi.testclient import TestClient
-from main import app
-from limiter import reserve_inference_slot
+from queue_manager import InferenceQueue
 
 
 @pytest.mark.parametrize(
     "endpoint",
     ["/generate", "/generate/stream"]
 )
-def test_http_429(endpoint):
+def test_queue_full_returns_429(monkeypatch, endpoint):
 
-    # Occupy both inference slots
-    slot1 = reserve_inference_slot()
-    slot2 = reserve_inference_slot()
+    # Create an isolated queue for testing
+    test_queue = InferenceQueue(
+        max_active=2,
+        max_waiting=0,
+        wait_timeout=0.1
+    )
+
+    monkeypatch.setattr(
+        main,
+        "inference_queue",
+        test_queue
+    )
+
+    # Occupy both active slots
+    test_queue.acquire()
+    test_queue.acquire()
 
     try:
-        next(slot1)
-        next(slot2)
-
-        # Send a request while both slots are busy
-        with TestClient(app) as client:
+        with TestClient(main.app) as client:
             response = client.post(
                 endpoint,
                 json={"prompt": "Hello"}
@@ -29,11 +38,10 @@ def test_http_429(endpoint):
 
         assert response.status_code == 429
 
-        assert response.json()["detail"] == (
-            "Too many concurrent inference requests"
-        )
+        assert response.json() == {
+            "detail": "Inference waiting queue is full"
+        }
 
     finally:
-        # Always release both slots
-        slot1.close()
-        slot2.close()
+        test_queue.release()
+        test_queue.release()

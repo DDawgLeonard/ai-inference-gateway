@@ -3,12 +3,15 @@ import time
 import threading
 import requests
 
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 
 URL = "http://127.0.0.1:8000/generate"
 
-# Synchronize the three clients
-barrier = threading.Barrier(3)
+NUM_REQUESTS = 6
+
+# Start all requests at roughly the same time
+barrier = threading.Barrier(NUM_REQUESTS)
 
 payload = {
     "prompt": (
@@ -32,11 +35,16 @@ def send_request(request_id):
 
         elapsed = time.perf_counter() - start
 
-        return {
+        result = {
             "id": request_id,
             "status": response.status_code,
             "elapsed": round(elapsed, 2)
         }
+
+        if response.status_code != 200:
+            result["detail"] = response.text[:200]
+
+        return result
 
     except requests.exceptions.RequestException as e:
         return {
@@ -46,12 +54,29 @@ def send_request(request_id):
         }
 
 
-with ThreadPoolExecutor(max_workers=3) as executor:
+with ThreadPoolExecutor(
+    max_workers=NUM_REQUESTS
+) as executor:
     results = list(
-        executor.map(send_request, [1, 2, 3])
+        executor.map(
+            send_request,
+            range(1, NUM_REQUESTS + 1)
+        )
     )
 
-print("\n--- Concurrency Test Results ---")
+print("\n--- Queue Test Results ---")
 
 for result in results:
     print(result)
+
+counts = Counter(
+    result["status"] for result in results
+)
+
+print("\n--- HTTP Status Summary ---")
+
+for status, count in sorted(
+    counts.items(),
+    key=lambda item: str(item[0])
+):
+    print(f"HTTP {status}: {count}")
